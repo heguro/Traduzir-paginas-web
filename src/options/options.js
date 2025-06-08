@@ -1126,6 +1126,7 @@ twpConfig
         { selector: "#btnEnableBing", svName: "bing" },
         { selector: "#btnEnableYandex", svName: "yandex" },
         { selector: "#btnEnableDeepL", svName: "deepl" },
+        { selector: "#btnEnableGemini", svName: "gemini" },
       ];
 
       servicesInfo.forEach((svInfo) => {
@@ -1186,10 +1187,14 @@ twpConfig
           );
           updateServiceSelector(enabledServices);
         };
-        $(svInfo.selector).checked =
-          twpConfig.get("enabledServices").indexOf(svInfo.svName) === -1
-            ? false
-            : true;
+        if (svInfo.svName === "gemini") {
+          $(svInfo.selector).checked = false;
+        } else {
+          $(svInfo.selector).checked =
+            twpConfig.get("enabledServices").indexOf(svInfo.svName) === -1
+              ? false
+              : true;
+        }
 
         updateServiceSelector(twpConfig.get("enabledServices"));
       });
@@ -1459,6 +1464,88 @@ twpConfig
       $("#deeplKEY").value = deepl_freeapi.apiKey;
       testDeepLFreeApiKey(deepl_freeapi.apiKey).then((response) => {
         $("#deeplApiResponse").textContent = JSON.stringify(response);
+      });
+    }
+
+    async function testGeminiModel(model, apiKey) {
+      return await new Promise((resolve) => {
+        const xhttp = new XMLHttpRequest();
+        xhttp.open("GET", `https://generativelanguage.googleapis.com/v1beta/models/${model}?key=${apiKey}`);
+        xhttp.responseType = "json";
+        xhttp.onload = () => {
+          resolve(xhttp.response);
+        };
+        xhttp.send();
+      });
+    }
+
+
+    $("#addGemini").onclick = async () => {
+      const gemini = {
+        name: "gemini",
+        model: $("#geminiModel").value.trim() || "gemini-2.0-flash",
+        apiKey: $("#geminiKEY").value.trim(),
+        thinkingBudget: $("#geminiThinkingBudget").value.trim(),
+      };
+      try {
+        if (!gemini.apiKey) {
+          throw new Error("API Key is required");
+        }
+        if (isNaN(Number(gemini.thinkingBudget))) {
+          throw new Error("Thinking budgets must be number or empty");
+        }
+
+        const response = await testGeminiModel(gemini.model, gemini.apiKey);
+        $("#geminiApiResponse").textContent = JSON.stringify(response);
+        if (response.error) {
+          throw new Error(`Error: ${response.error.message}`);
+        }
+
+        const customServices = twpConfig.get("customServices");
+        const index = customServices.findIndex((cs) => cs.name === "gemini");
+        if (index !== -1) {
+          customServices.splice(index, 1);
+        }
+        customServices.push(gemini);
+        twpConfig.set("customServices", customServices);
+        chrome.runtime.sendMessage(
+          { action: "createGeminiService", gemini },
+          checkedLastError
+        );
+        $("#geminiModel").value = gemini.model;
+        $("#geminiKEY").value = gemini.apiKey;
+        $("#geminiThinkingBudget").value = gemini.thinkingBudget;
+      } catch (e) {
+        console.error(e);
+        alert(e);
+      }
+    };
+
+    $("#removeGemini").onclick = () => {
+      const customServices = twpConfig.get("customServices");
+      const index = customServices.findIndex((cs) => cs.name === "gemini");
+      if (index !== -1) {
+        customServices.splice(index, 1);
+        twpConfig.set("customServices", customServices);
+        chrome.runtime.sendMessage(
+          { action: "removeGeminiService" },
+          checkedLastError
+        );
+      }
+      $("#geminiModel").value = "";
+      $("#geminiKEY").value = "";
+      $("#geminiApiResponse").textContent = "";
+    };
+
+    const gemini = twpConfig
+      .get("customServices")
+      .find((cs) => cs.name === "gemini");
+    if (gemini) {
+      $("#geminiModel").value = gemini.model;
+      $("#geminiKEY").value = gemini.apiKey;
+      $("#geminiThinkingBudget").value = gemini.thinkingBudget;
+      testGeminiModel(gemini.model, gemini.apiKey).then((response) => {
+        $("#geminiApiResponse").textContent = JSON.stringify(response);
       });
     }
 

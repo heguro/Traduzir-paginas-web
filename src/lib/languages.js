@@ -12223,10 +12223,54 @@ const twpLang = (function () {
       "uk",
       "zh-CN",
     ],
+    gemini: [
+      // https://ai.google.dev/gemini-api/docs/models#supported-languages
+      "ar",
+      "bn",
+      "bg",
+      "zh-CN",
+      "zh-TW",
+      "hr",
+      "cs",
+      "da",
+      "nl",
+      "en",
+      "et",
+      "fi",
+      "fr",
+      "de",
+      "el",
+      "he",
+      "hi",
+      "hu",
+      "id",
+      "it",
+      "ja",
+      "ko",
+      "lv",
+      "lt",
+      "no",
+      "pl",
+      "pt",
+      "pt-PT",
+      "ro",
+      "ru",
+      "sr",
+      "sk",
+      "sl",
+      "es",
+      "sw",
+      "sv",
+      "th",
+      "tr",
+      "uk",
+      "vi",
+    ],
   };
 
   twpLang.UILanguages = Object.keys(allLanguagesNames);
   twpLang.TargetLanguages = Object.keys(allLanguagesNames["en"]);
+  twpLang.AllEnglishLanguageNames = allLanguagesNames["en"];
 
   /**
    * get the list of localized languages for the current browser language
@@ -12243,7 +12287,7 @@ const twpLang = (function () {
 
   /** @type {Map<string, string>} */
   const alternatives = new Map();
-  const pageTranslationServices = ["google", "bing", "yandex"];
+  const pageTranslationServices = ["google", "bing", "yandex", "gemini"];
   /**
    * gets an alternate translation service if the selected translation service does not support the current target language.
    * @param {string} lang

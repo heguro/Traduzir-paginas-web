@@ -290,6 +290,7 @@
             <option value="google">Google</option>
             <option value="bing">Bing</option>
             <option value="yandex">Yandex</option>
+            <option value="gemini">Gemini</option>
           </select>
           <br />
           <p>
@@ -300,6 +301,7 @@
             <option value="bing">Bing</option>
             <option value="yandex">Yandex</option>
             <option value="deepl">DeepL</option>
+            <option value="gemini">Gemini</option>
           </select>
           <br />
           <p>
@@ -600,6 +602,29 @@
           <button id="addDeepL">Add DeepL Free API</button>
           <button id="removeDeepL">Remove DeepL Free API</button>
           <p id="deeplApiResponse"></p>
+        </div>
+        <hr>
+        <div>
+          <h3>Configure Gemini API.</h3>
+          <label for="geminiModel">Gemini model name</label><br>
+          <input type="text" id="geminiModel" placeholder="gemini-2.0-flash" style="width: 90%;"
+          autocomplete="off" spellcheck="false"><br>
+          <br>
+          <label for="geminiThinkingBudget">Thinking budgets</label><br>
+          (Leave empty if you using Gemini 2.0 or earlier model. See <a href="https://ai.google.dev/gemini-api/docs/thinking#set-budget" target="_blank">https://ai.google.dev/gemini-api/docs/thinking#set-budget</a>)<br>
+          <input type="text" id="geminiThinkingBudget" placeholder="0" style="width: 90%;"
+          autocomplete="off" spellcheck="false"><br>
+          <br>
+          <label for="geminiKEY">Your Gemini API key</label><br>
+          <input type="text" id="geminiKEY" placeholder="YOUR_GEMINI_API_KEY" style="width: 90%;"
+          autocomplete="off" spellcheck="false"><br>
+          <br>
+          <label for="btnEnableGemini" style="user-select: none;"><input type="checkbox" id="btnEnableGemini">
+            Enable Gemini</label>
+          <br>
+          <button id="addGemini">Add Gemini API</button>
+          <button id="removeGemini">Remove Gemini API</button>
+          <div id="geminiApiResponse"></div>
         </div>
         <hr>
         <div>

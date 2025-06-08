@@ -1531,6 +1531,150 @@ const translationService = (function () {
     })();
   };
 
+  /**
+   * Creates the Gemini translation service
+   * @param {object} gemini
+   * @returns {Service} geminiService
+   */
+  const createGeminiService = (gemini) => {
+    const { model, apiKey, thinkingBudget } = gemini;
+    return new (class extends Service {
+      constructor() {
+        super(
+          "gemini",
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          "POST",
+          function cbTransformRequest(sourceArray) {
+            let id = 1;
+            return sourceArray
+              .map((value) => {
+                const r = `<b${id}>${Utils.escapeHTML(value)}</b${id}>`;
+                id++;
+                return r;
+              })
+              .join("");
+          },
+          function cbParseResponse(response) {
+            try {
+              const translatedTexts = response.candidates[0]?.content?.parts[0]?.text;
+              const parsedResponse = JSON.parse(translatedTexts ?? "{}");
+              const result = parsedResponse.texts.map((text) => ({
+                text: text.trim(),
+                detectedLanguage: null,
+              }));
+              return result;
+            } catch (e) {
+              return [{ text: "", detectedLanguage: null }];
+            }
+          },
+          function cbTransformResponse(result, dontSortResults) {
+            const resultArray = [];
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(result, "text/html");
+            let currText = "";
+            doc.body.childNodes.forEach((node) => {
+              if (dontSortResults) {
+                if (node.nodeName == "#text") {
+                  currText += node.textContent;
+                } else {
+                  resultArray.push(currText + node.textContent);
+                  currText = "";
+                }
+              } else {
+                if (node.nodeName == "#text") {
+                  currText += node.textContent;
+                } else {
+                  const id = parseInt(node.nodeName.slice(1)) - 1;
+                  resultArray[id] = currText + node.textContent;
+                  currText = "";
+                }
+              }
+            });
+
+            return resultArray;
+          },
+          null,
+          function cbGetRequestBody(sourceLanguage, targetLanguage, requests) {
+            const isAutoSourceLanguage = sourceLanguage === "auto";
+            const requestString = JSON.stringify({
+              texts: requests.map((info) => info.originalText),
+            });
+            const sourceLanguageName = twpLang.AllEnglishLanguageNames[sourceLanguage];
+            const targetLanguageName = twpLang.AllEnglishLanguageNames[targetLanguage];
+            const systemPrompt =
+              (isAutoSourceLanguage
+                ? `You are a translation machine. You translate provided list of text into ${targetLanguageName} and output. Keep the original JSON format and each text with HTML tags.`
+                : `You are a translation machine. You translate provided list of ${sourceLanguageName} text into ${targetLanguageName} and output. Keep the original JSON format and each text with HTML tags.`);
+
+            const req = {
+              generationConfig: {
+                temperature: 1,
+                responseMimeType: "application/json",
+                responseSchema: {
+                  type: "object",
+                  properties: {
+                    texts: {
+                      type: "array",
+                      items: {
+                        type: "string"
+                      }
+                    }
+                  },
+                  required: [
+                    "texts"
+                  ]
+                },
+              },
+              systemInstruction: {
+                parts: [{ text: systemPrompt }],
+              },
+              contents: [
+                {
+                  parts: [{ text: requestString }]
+                },
+              ],
+            };
+            if (thinkingBudget) {
+              req.generationConfig.thinkingConfig = {
+                thinkingBudget,
+              };
+            }
+            return JSON.stringify(req);
+          },
+          function cbGetExtraHeaders() {
+            return [
+              {
+                name: "Content-Type",
+                value: "application/json",
+              },
+            ];
+          }
+        );
+      }
+
+      async translate(
+        sourceLanguage,
+        targetLanguage,
+        sourceArray2d,
+        dontSaveInPersistentCache,
+        dontSortResults = false
+      ) {
+        if (!apiKey) {
+          throw new Error("Gemini API key is not set.");
+        }
+
+        return await super.translate(
+          sourceLanguage,
+          targetLanguage,
+          sourceArray2d,
+          dontSaveInPersistentCache,
+          dontSortResults
+        );
+      }
+    })();
+  };
+
   /** @type {Map<string, Service>} */
   const serviceList = new Map();
 
@@ -1709,6 +1853,13 @@ const translationService = (function () {
         "deepl",
         /** @type {Service} */ /** @type {?} */ (deeplService)
       );
+    } else if (request.action === "createGeminiService") {
+      serviceList.set(
+        "gemini",
+        createGeminiService(request.gemini)
+      );
+    } else if (request.action === "removeGeminiService") {
+      serviceList.delete("gemini");
     }
   });
 
@@ -1727,6 +1878,13 @@ const translationService = (function () {
         .get("customServices")
         .find((cs) => cs.name === "deepl_freeapi");
       serviceList.set("deepl", createDeeplFreeApiService(deepl_freeapi.apiKey));
+    }
+
+    if (twpConfig.get("customServices").find((cs) => cs.name === "gemini")) {
+      const gemini = twpConfig
+        .get("customServices")
+        .find((cs) => cs.name === "gemini");
+      serviceList.set("gemini", createGeminiService(gemini));
     }
 
     const proxyServers = twpConfig.get("proxyServers");
