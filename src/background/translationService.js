@@ -1637,7 +1637,7 @@ const translationService = (function () {
             };
             if (thinkingBudget) {
               req.generationConfig.thinkingConfig = {
-                thinkingBudget,
+                thinkingBudget: Number(thinkingBudget),
               };
             }
             return JSON.stringify(req);
